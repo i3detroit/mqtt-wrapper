@@ -19,13 +19,13 @@ void callback(char* topic, byte* payload, unsigned int length, PubSubClient *cli
   }
   Serial.println();
 
-  client->publish("stat/i3/commons/lights/LightButton/status", "recieved msg");
+  client->publish("stat/example/status", "recieved msg");
 }
 void connectSuccess(PubSubClient* client) {
   Serial.println("win");
   //subscribe and shit here
-  client->publish("stat/i3/commons/lights/LightButton/status", "online");
-  client->subscribe("cmnd/i3/commons/lights/LightButton/something");
+  client->publish("stat/example/status", "online");
+  client->subscribe("cmnd/example/doStuff");
 }
 void setup() {
   Serial.begin(115200);
