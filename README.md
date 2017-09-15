@@ -2,3 +2,8 @@
 
 Designed to hide the wifi and mqtt reconnect, as it doesn't matter.
 
+
+# TODO
+
+- MQTT name
+- WIFI hostname
