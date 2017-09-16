@@ -141,7 +141,7 @@ void setup_mqtt(void (*callback)(char* topic, uint8_t* payload, unsigned int len
   });
   ArduinoOTA.begin();
 }
-void loop_mqtt(void (*connectedLoop)()) {
+void loop_mqtt(void (*connectedLoop)(PubSubClient* client)) {
   //Check if mqtt client is connected, if not try to reconnect to it(and wifi)
   //Fail in a non-blocking way
   if (!client.connected()) {
@@ -156,7 +156,7 @@ void loop_mqtt(void (*connectedLoop)()) {
   }else{
     // mqtt client connected
     client.loop();//Look for messages and whatnot...
-    connectedLoop();
+    connectedLoop(&client);
   }//end mqtt client connected
 
   ArduinoOTA.handle();
