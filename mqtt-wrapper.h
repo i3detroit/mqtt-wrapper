@@ -15,8 +15,8 @@
 
 #include <PubSubClient.h>
 
-extern void setup_mqtt(void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port);
+extern void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname);
 // probably something like void callback(char* topic, byte* payload, unsigned int length);
-extern void loop_mqtt(void (*connectedLoop)(PubSubClient* client));
+extern void loop_mqtt();
 
 #endif /* _MQTT_WRAPPER_H_ */

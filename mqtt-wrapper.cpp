@@ -14,7 +14,10 @@
 WiFiClient espClient;
 PubSubClient client(espClient);
 void (*_connectSuccess)(PubSubClient* client);
+void (*_connectedLoop)(PubSubClient* client);
 void (*_callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client);
+
+char _hostname[120];
 
 
 //Time since last mqtt connection attempt
@@ -35,6 +38,7 @@ void setup_wifi(const char* ssid, const char* password) {
   Serial.println(ssid);
 
 
+  WiFi.hostname(_hostname);
   WiFi.begin(ssid, password);
 
   int i = 0;
@@ -75,7 +79,7 @@ boolean reconnect() {
 
     // Attempt to connect
     // client.connect(mqtt node name)
-    if (client.connect("TODO: NAME")) {
+    if (client.connect(_hostname)) {
 
       Serial.println("connected");
 
@@ -98,9 +102,15 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
   _callback(topic, payload, length, &client);
 }
 
-void setup_mqtt(void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port) {
+void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname) {
   _connectSuccess = connectSuccess;
   _callback = callback;
+  _connectedLoop = connectedLoop;
+  int i;
+  for(i=0; i<strlen(__hostname); ++i) {
+    _hostname[i] = __hostname[i];
+  }
+  _hostname[i] = '\0';
 
   setup_wifi(ssid, password);
   client.setServer(mqtt_server, mqtt_port);
@@ -141,7 +151,7 @@ void setup_mqtt(void (*callback)(char* topic, uint8_t* payload, unsigned int len
   });
   ArduinoOTA.begin();
 }
-void loop_mqtt(void (*connectedLoop)(PubSubClient* client)) {
+void loop_mqtt() {
   //Check if mqtt client is connected, if not try to reconnect to it(and wifi)
   //Fail in a non-blocking way
   if (!client.connected()) {
@@ -156,7 +166,7 @@ void loop_mqtt(void (*connectedLoop)(PubSubClient* client)) {
   }else{
     // mqtt client connected
     client.loop();//Look for messages and whatnot...
-    connectedLoop(&client);
+    _connectedLoop(&client);
   }//end mqtt client connected
 
   ArduinoOTA.handle();
