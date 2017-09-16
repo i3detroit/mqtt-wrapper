@@ -3,7 +3,7 @@
  * Designed to hide the wifi and mqtt reconnect, as it doesn't matter.
  */
 #include "mqtt-wrapper.h"
-
+asdf
 
 const char* ssid = "i3detroit-wpa";
 const char* password = "i3detroit";
