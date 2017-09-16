@@ -19,6 +19,8 @@ void (*_callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClie
 
 char _hostname[120];
 
+bool _debug_print;
+
 
 //Time since last mqtt connection attempt
 long lastReconnectAttempt = 0;
@@ -33,9 +35,9 @@ void setup_wifi(const char* ssid, const char* password) {
   delay(10);
   // We start by connecting to a WiFi network
 
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  if(_debug_print) Serial.println();
+  if(_debug_print) Serial.print("Connecting to ");
+  if(_debug_print) Serial.println(ssid);
 
 
   WiFi.hostname(_hostname);
@@ -45,7 +47,7 @@ void setup_wifi(const char* ssid, const char* password) {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
 
-    Serial.print(".");
+    if(_debug_print) Serial.print(".");
 
   }
 
@@ -58,37 +60,37 @@ void setup_wifi(const char* ssid, const char* password) {
   randomSeed(micros());
 
 
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  //Serial.println("MAC address: ");
-  //Serial.println(MAC_char);
+  if(_debug_print) Serial.println("");
+  if(_debug_print) Serial.println("WiFi connected");
+  if(_debug_print) Serial.println("IP address: ");
+  if(_debug_print) Serial.println(WiFi.localIP());
+  //if(_debug_print) Serial.println("MAC address: ");
+  //if(_debug_print) Serial.println(MAC_char);
 
 }
 
 boolean reconnect() {
   if(WiFi.status() != WL_CONNECTED) {
     //Wifi is disconnected
-    Serial.println("WIFI BROKEN?");
+    if(_debug_print) Serial.println("WIFI BROKEN?");
   }
   int i = 0;
   while (!client.connected()) {
 
-    Serial.print("Attempting MQTT connection...");
+    if(_debug_print) Serial.print("Attempting MQTT connection...");
 
     // Attempt to connect
     // client.connect(mqtt node name)
     if (client.connect(_hostname)) {
 
-      Serial.println("connected");
+      if(_debug_print) Serial.println("connected");
 
       _connectSuccess(&client);
     } else {
 
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
+      if(_debug_print) Serial.print("failed, rc=");
+      if(_debug_print) Serial.print(client.state());
+      if(_debug_print) Serial.println(" try again in 5 seconds");
 
       // Wait 5 seconds before retrying
       delay(5000);
@@ -102,10 +104,12 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
   _callback(topic, payload, length, &client);
 }
 
-void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname) {
+void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname, bool debug_print) {
   _connectSuccess = connectSuccess;
   _callback = callback;
   _connectedLoop = connectedLoop;
+  _debug_print = debug_print;
+
   int i;
   for(i=0; i<strlen(__hostname); ++i) {
     _hostname[i] = __hostname[i];
@@ -118,16 +122,16 @@ void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(ch
 
   ArduinoOTA.onStart([]() {
 
-    Serial.print("Start\n|");
+    if(_debug_print) Serial.print("Start\n|");
     for(int i=0; i<80; ++i){
-      Serial.print(" ");
+      if(_debug_print) Serial.print(" ");
     }
-    Serial.print("|\n ");
+    if(_debug_print) Serial.print("|\n ");
 
   });
   ArduinoOTA.onEnd([]() {
 
-    Serial.println("\nEnd");
+    if(_debug_print) Serial.println("\nEnd");
 
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
@@ -136,17 +140,17 @@ void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(ch
     static int curProg = 0;
     int x = map(progress,0,total,0,80);
     for(int i=curProg; i<x; ++i){
-      Serial.print("*");
+      if(_debug_print) Serial.print("*");
     }
 
   });
   ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    if(_debug_print) Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) if(_debug_print) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) if(_debug_print) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) if(_debug_print) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) if(_debug_print) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) if(_debug_print) Serial.println("End Failed");
 
   });
   ArduinoOTA.begin();
