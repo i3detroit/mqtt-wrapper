@@ -7,6 +7,7 @@
 #include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
 
 
+const char* host_name = "display-example";
 const char* ssid = "i3detroit-wpa";
 const char* password = "i3detroit";
 const char* mqtt_server = "10.13.0.22";
@@ -46,16 +47,17 @@ void callback(char* topic, byte* payload, unsigned int length, PubSubClient *cli
     client->publish("stat/i3/commons/oled/status", "unknown command");
   }
 }
-void connectSuccess(PubSubClient* client) {
+void connectSuccess(PubSubClient* client, char* ip) {
   Serial.println("win");
   //subscribe and shit here
-  client->publish("stat/i3/commons/oled/status", "online");
+  client->publish("stat/i3/commons/oled/status", ip);
   client->subscribe("cmnd/i3/commons/oled/display");
 }
 
 void setup() {
   Serial.begin(115200);
-  setup_mqtt(callback, connectSuccess, ssid, password, mqtt_server, mqtt_port);
+  setup_mqtt(connectedLoop, callback, connectSuccess, ssid, password, mqtt_server, mqtt_port, host_name);
+
 
 
 
@@ -71,9 +73,9 @@ void setup() {
   //Future ones left
   display.setTextAlignment(TEXT_ALIGN_LEFT);
 }
-void connectedLoop() {
+void connectedLoop(PubSubClient* client) {
 }
 void loop() {
-  loop_mqtt(connectedLoop);
+  loop_mqtt();
 }
 

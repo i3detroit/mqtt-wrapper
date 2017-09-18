@@ -13,7 +13,7 @@
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-void (*_connectSuccess)(PubSubClient* client);
+void (*_connectSuccess)(PubSubClient* client, char* ip);
 void (*_connectedLoop)(PubSubClient* client);
 void (*_callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client);
 
@@ -21,14 +21,11 @@ char _hostname[120];
 
 bool _debug_print;
 
+char ip[16];
+
 
 //Time since last mqtt connection attempt
 long lastReconnectAttempt = 0;
-//Time since last mqtt status
-long lastMsg = 0;
-//Buffers for mqtt data
-char topic_buf[120];
-char data_buf[120];
 
 void setup_wifi(const char* ssid, const char* password) {
 
@@ -85,7 +82,9 @@ boolean reconnect() {
 
       if(_debug_print) Serial.println("connected");
 
-      _connectSuccess(&client);
+
+      WiFi.localIP().toString().toCharArray(ip, sizeof(ip));
+      _connectSuccess(&client, ip);
     } else {
 
       if(_debug_print) Serial.print("failed, rc=");
@@ -104,7 +103,10 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
   _callback(topic, payload, length, &client);
 }
 
-void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname, bool debug_print) {
+void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname) {
+  setup_mqtt(connectedLoop, callback, connectSuccess, ssid, password, mqtt_server, mqtt_port, __hostname, true);
+}
+void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname, bool debug_print) {
   _connectSuccess = connectSuccess;
   _callback = callback;
   _connectedLoop = connectedLoop;

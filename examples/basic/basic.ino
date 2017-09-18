@@ -3,8 +3,8 @@
  * Designed to hide the wifi and mqtt reconnect, as it doesn't matter.
  */
 #include "mqtt-wrapper.h"
-asdf
 
+const char* host_name = "basic-example";
 const char* ssid = "i3detroit-wpa";
 const char* password = "i3detroit";
 const char* mqtt_server = "10.13.0.22";
@@ -21,19 +21,19 @@ void callback(char* topic, byte* payload, unsigned int length, PubSubClient *cli
 
   client->publish("stat/example/status", "recieved msg");
 }
-void connectSuccess(PubSubClient* client) {
+void connectSuccess(PubSubClient* client, char* ip) {
   Serial.println("win");
   //subscribe and shit here
-  client->publish("stat/example/status", "online");
+  client->publish("stat/example/status", ip);
   client->subscribe("cmnd/example/doStuff");
 }
 void setup() {
   Serial.begin(115200);
-  setup_mqtt(callback, connectSuccess, ssid, password, mqtt_server, mqtt_port);
+  setup_mqtt(connectedLoop, callback, connectSuccess, ssid, password, mqtt_server, mqtt_port, host_name);
 }
-void connectedLoop() {
+void connectedLoop(PubSubClient* client) {
 }
 void loop() {
-  loop_mqtt(connectedLoop);
+  loop_mqtt();
 }
 
