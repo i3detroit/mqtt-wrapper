@@ -50,7 +50,8 @@ void callback(char* topic, byte* payload, unsigned int length, PubSubClient *cli
 void connectSuccess(PubSubClient* client, char* ip) {
   Serial.println("win");
   //subscribe and shit here
-  client->publish("stat/i3/commons/oled/status", ip);
+  sprintf(buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", host_name, ip);
+  client->publish("tele/i3/commons/oled/INFO2", buf);
   client->subscribe("cmnd/i3/commons/oled/display");
 }
 
