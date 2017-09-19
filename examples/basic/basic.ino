@@ -10,6 +10,8 @@ const char* password = "i3detroit";
 const char* mqtt_server = "10.13.0.22";
 const int mqtt_port = 1883;
 
+char buf[1024];
+
 void callback(char* topic, byte* payload, unsigned int length, PubSubClient *client) {
   Serial.print("Message arrived [");
   Serial.print(topic);
