@@ -13,6 +13,7 @@
 #define _MQTT_WRAPPER_H_
 
 
+#define MQTT_MAX_PACKET_SIZE 512
 #include <PubSubClient.h>
 
 extern void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __hostname);
