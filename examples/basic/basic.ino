@@ -9,6 +9,7 @@ const char* ssid = "i3detroit-wpa";
 const char* password = "i3detroit";
 const char* mqtt_server = "10.13.0.22";
 const int mqtt_port = 1883;
+const char* fullTopic = "example";
 
 char buf[1024];
 
@@ -28,11 +29,24 @@ void connectSuccess(PubSubClient* client, char* ip) {
   //subscribe and shit here
   sprintf(buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", host_name, ip);
   client->publish("tele/example/INFO2", buf);
+  client->publish("tele/example/LWT", "Online");
   client->subscribe("cmnd/example/doStuff");
 }
 void setup() {
   Serial.begin(115200);
-  setup_mqtt(connectedLoop, callback, connectSuccess, ssid, password, mqtt_server, mqtt_port, host_name);
+  struct mqtt_wrapper_options options;
+  options.connectedLoop = connectedLoop;
+  options.callback = callback;
+  options.connectSuccess = connectSuccess;
+  options.ssid = ssid;
+  options.password = password;
+  options.mqtt_server = mqtt_server;
+  options.mqtt_port = mqtt_port;
+  options.host_name = host_name;
+  options.fullTopic = fullTopic;
+  struct mqtt_wrapper_options* tmp = &options;
+  setup_mqtt(&tmp);
+  Serial.println("Setup done");
 }
 void connectedLoop(PubSubClient* client) {
 }
