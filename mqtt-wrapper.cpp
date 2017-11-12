@@ -131,8 +131,7 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
     --i;
   }
   topic += i + 1;
-  if(options->debug_print) Serial.println(topic);
-  //If topic ends in Restart
+  //Handle some commands
   if(strcmp(topic, "restart") == 0) {
     if(payload[0] == '1' && length == 1) {
       if(options->debug_print) Serial.print("RESTART!");
@@ -144,7 +143,8 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
       sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
       client.publish(mqtt_wrapper_topic, "{\"Restart\":\"1 to restart\"}");
     }
-  } else if (strcmp(topic, "info") == 0){
+  } else if (strcmp(topic, "status") == 0){
+    //TODO: This does not match tasmota format. I am not sure I care.
     if(options->debug_print) Serial.print("INFO!");
     info2();
   } else {

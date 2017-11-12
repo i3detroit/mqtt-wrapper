@@ -15,6 +15,13 @@ struct mqtt_wrapper_options some_options;
 char buf[1024];
 
 void callback(char* topic, byte* payload, unsigned int length, PubSubClient *client) {
+    Serial.print("user given [");
+    Serial.print(topic);
+    Serial.print("] ");
+    for (int i = 0; i < length; i++) {
+      Serial.print((char)payload[i]);
+    }
+    Serial.println();
   client->publish("stat/example/status", "recieved msg");
 }
 void connectSuccess(PubSubClient* client, char* ip) {
