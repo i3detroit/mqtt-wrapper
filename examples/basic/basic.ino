@@ -29,7 +29,7 @@ void connectSuccess(PubSubClient* client, char* ip) {
   //subscribe and shit here
   //Are already subscribed to cmnd/fullTopic/+
   //And will recieve callback topics as everything after the trailing slash
-  //client->subscribe("cmnd/example/doStuff");
+  client->subscribe("cmnd/example/doStuff");
 }
 void setup() {
   Serial.begin(115200);

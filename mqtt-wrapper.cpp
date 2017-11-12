@@ -122,34 +122,40 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
     }
     Serial.println();
   }
-  //Find last bit of topic
-  int i = strlen(topic);
-  while(topic[i] != '/') {
-    // to lower
-    // https://stackoverflow.com/a/2661917/2423187
-    topic[i] = (topic[i] > 0x40 && topic[i] < 0x5b) ? topic[i]|0x60 : topic[i];
-    --i;
-  }
-  topic += i + 1;
-  //Handle some commands
-  if(strcmp(topic, "restart") == 0) {
-    if(payload[0] == '1' && length == 1) {
-      if(options->debug_print) Serial.print("RESTART!");
-      sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
-      client.publish(mqtt_wrapper_topic, "{\"Restart\":\"Restarting\"}");
-      ESP.restart();
-    } else {
-      if(options->debug_print) Serial.print("try better options?");
-      sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
-      client.publish(mqtt_wrapper_topic, "{\"Restart\":\"1 to restart\"}");
+  // if it is addressed as a command to the fulltopic, parse it
+  sprintf(mqtt_wrapper_buf, "cmnd/%s/", options->fullTopic);
+  if(strncmp(mqtt_wrapper_buf, topic, strlen(mqtt_wrapper_buf)) == 0) {
+    //Find last bit of topic
+    int i = strlen(topic);
+    while(topic[i] != '/') {
+      // to lower
+      // https://stackoverflow.com/a/2661917/2423187
+      topic[i] = (topic[i] > 0x40 && topic[i] < 0x5b) ? topic[i]|0x60 : topic[i];
+      --i;
     }
-  } else if (strcmp(topic, "status") == 0){
-    //TODO: This does not match tasmota format. I am not sure I care.
-    if(options->debug_print) Serial.print("INFO!");
-    info2();
-  } else {
-    options->callback(topic, payload, length, &client);
+    topic += i + 1;
+    //Handle some commands, return from function if handled
+    if(strcmp(topic, "restart") == 0) {
+      if(payload[0] == '1' && length == 1) {
+        if(options->debug_print) Serial.print("RESTART!");
+        sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
+        client.publish(mqtt_wrapper_topic, "{\"Restart\":\"Restarting\"}");
+        ESP.restart();
+      } else {
+        if(options->debug_print) Serial.print("try better options?");
+        sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
+        client.publish(mqtt_wrapper_topic, "{\"Restart\":\"1 to restart\"}");
+      }
+      return;
+    } else if (strcmp(topic, "status") == 0){
+      //TODO: This does not match tasmota format. I am not sure I care.
+      if(options->debug_print) Serial.print("INFO!");
+      info2();
+      return;
+    }
   }
+  //Might have been parsed, but was not handled by function
+  options->callback(topic, payload, length, &client);
 }
 
 //void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __host_name, bool debug_print) {
