@@ -11,7 +11,7 @@ const char* mqtt_server = "10.13.0.22";
 const int mqtt_port = 1883;
 const char* fullTopic = "test";
 
-struct mqtt_wrapper_options some_options;
+struct mqtt_wrapper_options mqtt_options;
 char buf[1024];
 
 void callback(char* topic, byte* payload, unsigned int length, PubSubClient *client) {
@@ -33,16 +33,16 @@ void connectSuccess(PubSubClient* client, char* ip) {
 }
 void setup() {
   Serial.begin(115200);
-  some_options.connectedLoop = connectedLoop;
-  some_options.callback = callback;
-  some_options.connectSuccess = connectSuccess;
-  some_options.ssid = ssid;
-  some_options.password = password;
-  some_options.mqtt_server = mqtt_server;
-  some_options.mqtt_port = mqtt_port;
-  some_options.host_name = host_name;
-  some_options.fullTopic = fullTopic;
-  setup_mqtt(&some_options);
+  mqtt_options.connectedLoop = connectedLoop;
+  mqtt_options.callback = callback;
+  mqtt_options.connectSuccess = connectSuccess;
+  mqtt_options.ssid = ssid;
+  mqtt_options.password = password;
+  mqtt_options.mqtt_server = mqtt_server;
+  mqtt_options.mqtt_port = mqtt_port;
+  mqtt_options.host_name = host_name;
+  mqtt_options.fullTopic = fullTopic;
+  setup_mqtt(&mqtt_options);
   Serial.println("Setup done");
 }
 void connectedLoop(PubSubClient* client) {
