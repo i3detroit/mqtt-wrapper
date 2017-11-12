@@ -17,10 +17,19 @@ PubSubClient client(espClient);
 struct mqtt_wrapper_options* options;
 
 char ip[16];
+char mqtt_wrapper_buf[64];
+char mqtt_wrapper_topic[64];
 
 
 //Time since last mqtt connection attempt
 uint32_t lastReconnectAttempt = 0;
+
+void info2() {
+  sprintf(mqtt_wrapper_buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", options->host_name, ip);
+  sprintf(mqtt_wrapper_topic, "tele/%s/INFO2", options->fullTopic);
+  client.publish(mqtt_wrapper_topic, mqtt_wrapper_buf);
+}
+
 
 void setup_wifi() {
 
@@ -62,28 +71,32 @@ void setup_wifi() {
 }
 
 boolean reconnect() {
-  Serial.println("reconnect");
   if(WiFi.status() != WL_CONNECTED) {
     //Wifi is disconnected
     if(options->debug_print) Serial.println("WIFI BROKEN?");
   }
   int i = 0;
-  Serial.println("reconnecting");
   while (!client.connected()) {
 
     if(options->debug_print) Serial.print("Attempting MQTT connection...");
 
     // Attempt to connect
     // client.connect(mqtt node name)
-    Serial.println(options->host_name);
-    Serial.println("actually calling connect");
-    //if (client.connect(options->host_name, "tele/example/LWT", 0, true, "Offline")) {
-    if (client.connect(options->host_name)) {
+    sprintf(mqtt_wrapper_buf, "tele/%s/LWT", options->fullTopic);
+    if (client.connect(options->host_name, mqtt_wrapper_buf, 0, true, "Offline")) {
 
       if(options->debug_print) Serial.println("connected");
 
 
       WiFi.localIP().toString().toCharArray(ip, sizeof(ip));
+
+      info2();
+      sprintf(mqtt_wrapper_topic, "tele/%s/LWT", options->fullTopic);
+      client.publish(mqtt_wrapper_topic, "Online");
+
+      sprintf(mqtt_wrapper_topic, "cmnd/%s/+", options->fullTopic);
+      client.subscribe(mqtt_wrapper_topic);
+
       options->connectSuccess(&client, ip);
     } else {
 
@@ -100,12 +113,48 @@ boolean reconnect() {
 }
 
 void internal_callback(char* topic, byte* payload, unsigned int length) {
-  options->callback(topic, payload, length, &client);
+  if(options->debug_print) {
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.print("] ");
+    for (int i = 0; i < length; i++) {
+      Serial.print((char)payload[i]);
+    }
+    Serial.println();
+  }
+  //Find last bit of topic
+  int i = strlen(topic);
+  while(topic[i] != '/') {
+    // to lower
+    // https://stackoverflow.com/a/2661917/2423187
+    topic[i] = (topic[i] > 0x40 && topic[i] < 0x5b) ? topic[i]|0x60 : topic[i];
+    --i;
+  }
+  topic += i + 1;
+  if(options->debug_print) Serial.println(topic);
+  //If topic ends in Restart
+  if(strcmp(topic, "restart") == 0) {
+    if(payload[0] == '1' && length == 1) {
+      if(options->debug_print) Serial.print("RESTART!");
+      sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
+      client.publish(mqtt_wrapper_topic, "{\"Restart\":\"Restarting\"}");
+      ESP.restart();
+    } else {
+      if(options->debug_print) Serial.print("try better options?");
+      sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
+      client.publish(mqtt_wrapper_topic, "{\"Restart\":\"1 to restart\"}");
+    }
+  } else if (strcmp(topic, "info") == 0){
+    if(options->debug_print) Serial.print("INFO!");
+    info2();
+  } else {
+    options->callback(topic, payload, length, &client);
+  }
 }
 
 //void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __host_name, bool debug_print) {
-void setup_mqtt(struct mqtt_wrapper_options** newOptions) {
-  options = *newOptions;
+void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
+  options = newOptions;
   if(options->debug_print == NULL) {
     options->debug_print = true;
   }
@@ -152,7 +201,6 @@ void setup_mqtt(struct mqtt_wrapper_options** newOptions) {
 void loop_mqtt() {
   //Check if mqtt client is connected, if not try to reconnect to it(and wifi)
   //Fail in a non-blocking way
-  Serial.println("LOOP");
   if (!client.connected()) {
     uint32_t now = millis();
     if (now - lastReconnectAttempt > 5000) {

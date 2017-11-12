@@ -28,7 +28,7 @@ struct mqtt_wrapper_options {
 };
 
 
-extern void setup_mqtt(struct mqtt_wrapper_options** options);
+extern void setup_mqtt(struct mqtt_wrapper_options* options);
 extern void loop_mqtt();
 
 #endif /* _MQTT_WRAPPER_H_ */
