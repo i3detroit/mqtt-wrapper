@@ -17,19 +17,16 @@ PubSubClient client(espClient);
 struct mqtt_wrapper_options* options;
 
 char ip[16];
-char mqtt_wrapper_buf[64];
+char mqtt_wrapper_buf[128];
 char mqtt_wrapper_topic[64];
+unsigned char macBin[6];
+char mac[18];
 
 //Time since last mqtt connection attempt
 uint32_t lastReconnectAttempt = 0;
 
 void info2() {
-  // WiFi.macAddress(MAC_array);
-  // for (int i = 0; i < sizeof(MAC_array); ++i){
-  //   sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);
-  // }
-  // MAC_char[strlen(MAC_char)-1] = '\0';
-  sprintf(mqtt_wrapper_buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", options->host_name, ip);
+  sprintf(mqtt_wrapper_buf, "{\"Hostname\":\"%s\",\"IPaddress\":\"%s\",\"Mac\":\"%s\"}", options->host_name, ip, mac);
   sprintf(mqtt_wrapper_topic, "tele/%s/INFO2", options->fullTopic);
   client.publish(mqtt_wrapper_topic, mqtt_wrapper_buf);
 }
@@ -137,6 +134,14 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
 
   WiFi.hostname(options->host_name);
   WiFi.begin(options->ssid, options->password);
+
+  WiFi.macAddress(macBin);
+  for (int i = 0; i < sizeof(macBin); ++i){
+    sprintf(mac + strlen(mac),"%02x:",macBin[i]);
+  }
+  mac[strlen(mac)-1] = '\0';
+  Serial.print("MAC: ");
+  Serial.println(mac);
 
   randomSeed(micros());
   client.setServer(options->mqtt_server, options->mqtt_port);
