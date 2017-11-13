@@ -20,11 +20,18 @@ char ip[16];
 char mqtt_wrapper_buf[64];
 char mqtt_wrapper_topic[64];
 
+unsigned long nextMQTTAttempt = 0UL;
+unsigned long mqttAttemptInterval = 5000UL;
 
 //Time since last mqtt connection attempt
 uint32_t lastReconnectAttempt = 0;
 
 void info2() {
+  // WiFi.macAddress(MAC_array);
+  // for (int i = 0; i < sizeof(MAC_array); ++i){
+  //   sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);
+  // }
+  // MAC_char[strlen(MAC_char)-1] = '\0';
   sprintf(mqtt_wrapper_buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", options->host_name, ip);
   sprintf(mqtt_wrapper_topic, "tele/%s/INFO2", options->fullTopic);
   client.publish(mqtt_wrapper_topic, mqtt_wrapper_buf);
@@ -33,38 +40,21 @@ void info2() {
 
 void setup_wifi() {
 
-  delay(10);
-  // We start by connecting to a WiFi network
 
-  if(options->debug_print) Serial.println();
-  if(options->debug_print) Serial.print("Connecting to ");
-  if(options->debug_print) Serial.println(options->ssid);
 
 
   WiFi.hostname(options->host_name);
   WiFi.begin(options->ssid, options->password);
 
-  int i = 0;
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  // while (WiFi.status() != WL_CONNECTED) {
+  //   delay(500);
 
-    if(options->debug_print) Serial.print(".");
+  //   if(options->debug_print) Serial.print(".");
 
-  }
-
-  // WiFi.macAddress(MAC_array);
-  // for (int i = 0; i < sizeof(MAC_array); ++i){
-  //   sprintf(MAC_char,"%s%02x:",MAC_char,MAC_array[i]);
   // }
-  // MAC_char[strlen(MAC_char)-1] = '\0';
-
-  randomSeed(micros());
 
 
-  if(options->debug_print) Serial.println("");
-  if(options->debug_print) Serial.println("WiFi connected");
-  if(options->debug_print) Serial.println("IP address: ");
-  if(options->debug_print) Serial.println(WiFi.localIP());
+
   //if(options->debug_print) Serial.println("MAC address: ");
   //if(options->debug_print) Serial.println(MAC_char);
 
@@ -73,42 +63,44 @@ void setup_wifi() {
 boolean reconnect() {
   if(WiFi.status() != WL_CONNECTED) {
     //Wifi is disconnected
-    if(options->debug_print) Serial.println("WIFI BROKEN?");
-  }
-  int i = 0;
-  while (!client.connected()) {
+    if(options->debug_print) Serial.print(".");
+  } else {
+    //We have wifi
+    if(options->debug_print) Serial.println("WiFi connected");
+    if(options->debug_print) Serial.println("IP address: ");
+    if(options->debug_print) Serial.println(WiFi.localIP());
+    //We have wifi
+    int i = 0;
+    if (!client.connected() && (long)( millis() - nextMQTTAttempt ) >= 0) {
+      nextMQTTAttempt = millis() + mqttAttemptInterval;
+      if(options->debug_print) Serial.print("Attempting MQTT connection...");
 
-    if(options->debug_print) Serial.print("Attempting MQTT connection...");
+      // Attempt to connect
+      // client.connect(mqtt node name)
+      sprintf(mqtt_wrapper_buf, "tele/%s/LWT", options->fullTopic);
+      if (client.connect(options->host_name, mqtt_wrapper_buf, 0, true, "Offline")) {
 
-    // Attempt to connect
-    // client.connect(mqtt node name)
-    sprintf(mqtt_wrapper_buf, "tele/%s/LWT", options->fullTopic);
-    if (client.connect(options->host_name, mqtt_wrapper_buf, 0, true, "Offline")) {
-
-      if(options->debug_print) Serial.println("connected");
+        if(options->debug_print) Serial.println("connected");
 
 
-      WiFi.localIP().toString().toCharArray(ip, sizeof(ip));
+        WiFi.localIP().toString().toCharArray(ip, sizeof(ip));
 
-      info2();
-      sprintf(mqtt_wrapper_topic, "tele/%s/LWT", options->fullTopic);
-      client.publish(mqtt_wrapper_topic, "Online");
+        info2();
+        sprintf(mqtt_wrapper_topic, "tele/%s/LWT", options->fullTopic);
+        client.publish(mqtt_wrapper_topic, "Online");
 
-      sprintf(mqtt_wrapper_topic, "cmnd/%s/+", options->fullTopic);
-      client.subscribe(mqtt_wrapper_topic);
+        sprintf(mqtt_wrapper_topic, "cmnd/%s/+", options->fullTopic);
+        client.subscribe(mqtt_wrapper_topic);
 
-      options->connectSuccess(&client, ip);
-    } else {
+        options->connectSuccess(&client, ip);
+      } else {
 
-      if(options->debug_print) Serial.print("failed, rc=");
-      if(options->debug_print) Serial.print(client.state());
-      if(options->debug_print) Serial.println(" try again in 5 seconds");
+        if(options->debug_print) Serial.print("failed, rc=");
+        if(options->debug_print) Serial.print(client.state());
 
-      // Wait 5 seconds before retrying
-      delay(5000);
+      }
     }
   }
-
   return client.connected();
 }
 
@@ -166,6 +158,15 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
   }
 
   setup_wifi();
+  if(options->debug_print) Serial.println();
+  if(options->debug_print) Serial.print("Connecting to ");
+  if(options->debug_print) Serial.println(options->ssid);
+
+  WiFi.hostname(options->host_name);
+  WiFi.begin(options->ssid, options->password);
+
+
+  randomSeed(micros());
   client.setServer(options->mqtt_server, options->mqtt_port);
   client.setCallback(internal_callback);
 
