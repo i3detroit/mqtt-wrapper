@@ -58,7 +58,7 @@ boolean reconnect() {
 
         info2();
         sprintf(mqtt_wrapper_topic, "tele/%s/LWT", options->fullTopic);
-        client.publish(mqtt_wrapper_topic, "Online");
+        client.publish(mqtt_wrapper_topic, "Online", true);
 
         sprintf(mqtt_wrapper_topic, "cmnd/%s/+", options->fullTopic);
         client.subscribe(mqtt_wrapper_topic);
