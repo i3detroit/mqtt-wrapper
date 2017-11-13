@@ -20,9 +20,6 @@ char ip[16];
 char mqtt_wrapper_buf[64];
 char mqtt_wrapper_topic[64];
 
-unsigned long nextMQTTAttempt = 0UL;
-unsigned long mqttAttemptInterval = 5000UL;
-
 //Time since last mqtt connection attempt
 uint32_t lastReconnectAttempt = 0;
 
@@ -38,28 +35,6 @@ void info2() {
 }
 
 
-void setup_wifi() {
-
-
-
-
-  WiFi.hostname(options->host_name);
-  WiFi.begin(options->ssid, options->password);
-
-  // while (WiFi.status() != WL_CONNECTED) {
-  //   delay(500);
-
-  //   if(options->debug_print) Serial.print(".");
-
-  // }
-
-
-
-  //if(options->debug_print) Serial.println("MAC address: ");
-  //if(options->debug_print) Serial.println(MAC_char);
-
-}
-
 boolean reconnect() {
   if(WiFi.status() != WL_CONNECTED) {
     //Wifi is disconnected
@@ -71,8 +46,7 @@ boolean reconnect() {
     if(options->debug_print) Serial.println(WiFi.localIP());
     //We have wifi
     int i = 0;
-    if (!client.connected() && (long)( millis() - nextMQTTAttempt ) >= 0) {
-      nextMQTTAttempt = millis() + mqttAttemptInterval;
+    if (!client.connected()) {
       if(options->debug_print) Serial.print("Attempting MQTT connection...");
 
       // Attempt to connect
@@ -157,14 +131,12 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
     options->debug_print = true;
   }
 
-  setup_wifi();
   if(options->debug_print) Serial.println();
   if(options->debug_print) Serial.print("Connecting to ");
   if(options->debug_print) Serial.println(options->ssid);
 
   WiFi.hostname(options->host_name);
   WiFi.begin(options->ssid, options->password);
-
 
   randomSeed(micros());
   client.setServer(options->mqtt_server, options->mqtt_port);
