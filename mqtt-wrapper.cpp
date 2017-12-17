@@ -132,6 +132,8 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
   if(options->debug_print) Serial.print("Connecting to ");
   if(options->debug_print) Serial.println(options->ssid);
 
+  WiFi.mode(WIFI_STA);
+
   WiFi.hostname(options->host_name);
   WiFi.begin(options->ssid, options->password);
 
