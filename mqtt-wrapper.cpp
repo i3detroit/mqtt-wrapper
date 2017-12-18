@@ -37,6 +37,7 @@ void setup_wifi(const char* ssid, const char* password) {
   if(_debug_print) Serial.println(ssid);
 
 
+  WiFi.mode(WIFI_STA);
   WiFi.hostname(_hostname);
   WiFi.begin(ssid, password);
 
