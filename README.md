@@ -7,9 +7,3 @@ Designed to hide the wifi and mqtt reconnect, as it doesn't matter.
 
 Put in `whatever-arduino-directory/portable/sketchbook/libraries`
 Or if it's not portable wherever your sketchbook directory is.
-
-
-# TODO
-
-- MQTT name
-- WIFI hostname

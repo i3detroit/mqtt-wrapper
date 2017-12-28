@@ -12,21 +12,16 @@ const char* ssid = "i3detroit-wpa";
 const char* password = "i3detroit";
 const char* mqtt_server = "10.13.0.22";
 const int mqtt_port = 1883;
+const char* fullTopic = "i3/commons/oled";
+
+struct mqtt_wrapper_options mqtt_options;
 
 char buf[1024];
 
 SSD1306  display(0x3c, D3, D5);
 
 void callback(char* topic, byte* payload, unsigned int length, PubSubClient *client) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-    //buf[i] = (char)payload[i];
-  }
-  Serial.println();
-  if (strcmp(topic, "cmnd/i3/commons/oled/display") == 0) {
+  if (strcmp(topic, "display") == 0) {
 
     int j = 0;
     for(; j<length && j<sizeof(buf)/sizeof(char); ++j) {
@@ -48,16 +43,24 @@ void callback(char* topic, byte* payload, unsigned int length, PubSubClient *cli
   }
 }
 void connectSuccess(PubSubClient* client, char* ip) {
-  Serial.println("win");
-  //subscribe and shit here
-  sprintf(buf, "{\"Hostname\":\"%s\", \"IPaddress\":\"%s\"}", host_name, ip);
-  client->publish("tele/i3/commons/oled/INFO2", buf);
-  client->subscribe("cmnd/i3/commons/oled/display");
+  //Already subscribed to 'cmnd/fulltopic/+'
+  display.clear();
+  display.drawStringMaxWidth(0, 0, 128, String(ip));
+  display.display();
 }
 
 void setup() {
   Serial.begin(115200);
-  setup_mqtt(connectedLoop, callback, connectSuccess, ssid, password, mqtt_server, mqtt_port, host_name);
+  mqtt_options.connectedLoop = connectedLoop;
+  mqtt_options.callback = callback;
+  mqtt_options.connectSuccess = connectSuccess;
+  mqtt_options.ssid = ssid;
+  mqtt_options.password = password;
+  mqtt_options.mqtt_server = mqtt_server;
+  mqtt_options.mqtt_port = mqtt_port;
+  mqtt_options.host_name = host_name;
+  mqtt_options.fullTopic = fullTopic;
+  setup_mqtt(&mqtt_options);
 
 
 
