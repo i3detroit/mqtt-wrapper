@@ -139,7 +139,7 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
 
   WiFi.macAddress(macBin);
   for (int i = 0; i < sizeof(macBin); ++i){
-    sprintf(mac + strlen(mac),"%02x:",macBin[i]);
+    sprintf(mac + strlen(mac),"%02X:",macBin[i]);
   }
   mac[strlen(mac)-1] = '\0';
   Serial.print("MAC: ");
