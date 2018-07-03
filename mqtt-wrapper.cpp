@@ -15,6 +15,10 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 struct mqtt_wrapper_options* options;
+enum ConnState state;
+
+uint32_t nextTelemetry;
+uint32_t telemetryInterval;
 
 char ip[16];
 char mqtt_wrapper_buf[128];
@@ -34,14 +38,25 @@ void info2() {
 
 boolean reconnect() {
   if(WiFi.status() != WL_CONNECTED) {
+    if(state != WIFI_DISCONNECTED) {
+      state = WIFI_DISCONNECTED;
+      if(options->connectionEvent) {
+        options->connectionEvent(&client, state, 0);
+      }
+    }
     //Wifi is disconnected
     if(options->debug_print) Serial.print(".");
   } else {
     //We have wifi
+    if(state != F_MQTT_DISCONNECTED) {
+      state = F_MQTT_DISCONNECTED;
+      if(options->connectionEvent) {
+        options->connectionEvent(&client, state, 0);
+      }
+    }
     if(options->debug_print) Serial.println("WiFi connected");
     if(options->debug_print) Serial.println("IP address: ");
     if(options->debug_print) Serial.println(WiFi.localIP());
-    //We have wifi
     int i = 0;
     if (!client.connected()) {
       if(options->debug_print) Serial.print("Attempting MQTT connection...");
@@ -50,6 +65,12 @@ boolean reconnect() {
       // client.connect(mqtt node name)
       sprintf(mqtt_wrapper_buf, "tele/%s/LWT", options->fullTopic);
       if (client.connect(options->host_name, mqtt_wrapper_buf, 0, true, "Offline")) {
+        if(state != F_MQTT_CONNECTED) {
+          state = F_MQTT_CONNECTED;
+          if(options->connectionEvent) {
+            options->connectionEvent(&client, state, 0);
+          }
+        }
 
         if(options->debug_print) Serial.println("connected");
 
@@ -65,9 +86,26 @@ boolean reconnect() {
 
         options->connectSuccess(&client, ip);
       } else {
-
+        if(state != F_MQTT_DISCONNECTED) {
+          state = F_MQTT_DISCONNECTED;
+          if(options->connectionEvent) {
+            options->connectionEvent(&client, state, client.state());
+          }
+        }
+        // https://pubsubclient.knolleary.net/api.html#state
+        // int - the client state, which can take the following values (constants defined in PubSubClient.h):
+        // -4 : MQTT_CONNECTION_TIMEOUT - the server didn't respond within the keepalive time
+        // -3 : MQTT_CONNECTION_LOST - the network connection was broken
+        // -2 : MQTT_CONNECT_FAILED - the network connection failed
+        // -1 : MQTT_DISCONNECTED - the client is disconnected cleanly
+        // 0 : MQTT_CONNECTED - the client is connected
+        // 1 : MQTT_CONNECT_BAD_PROTOCOL - the server doesn't support the requested version of MQTT
+        // 2 : MQTT_CONNECT_BAD_CLIENT_ID - the server rejected the client identifier
+        // 3 : MQTT_CONNECT_UNAVAILABLE - the server was unable to accept the connection
+        // 4 : MQTT_CONNECT_BAD_CREDENTIALS - the username/password were rejected
+        // 5 : MQTT_CONNECT_UNAUTHORIZED - the client was not authorized to connect
         if(options->debug_print) Serial.print("failed, rc=");
-        if(options->debug_print) Serial.print(client.state());
+        if(options->debug_print) Serial.println(client.state());
 
       }
     }
@@ -98,7 +136,7 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
     }
     topic += i + 1;
     //Handle some commands, return from function if handled
-    if(strcmp(topic, "restart") == 0) {
+    if(strncmp(topic, "restart", strlen(topic)) == 0) {
       if(payload[0] == '1' && length == 1) {
         if(options->debug_print) Serial.print("RESTART!");
         sprintf(mqtt_wrapper_topic, "stat/%s/RESULT", options->fullTopic);
@@ -110,7 +148,7 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
         client.publish(mqtt_wrapper_topic, "{\"Restart\":\"1 to restart\"}");
       }
       return;
-    } else if (strcmp(topic, "status") == 0){
+    } else if (strncmp(topic, "status", strlen(topic)) == 0){
       //TODO: This does not match tasmota format. I am not sure I care.
       if(options->debug_print) Serial.print("INFO!");
       info2();
@@ -121,12 +159,18 @@ void internal_callback(char* topic, byte* payload, unsigned int length) {
   options->callback(topic, payload, length, &client);
 }
 
-//void setup_mqtt(void (*connectedLoop)(PubSubClient* client), void (*callback)(char* topic, uint8_t* payload, unsigned int length, PubSubClient* client), void (*connectSuccess)(PubSubClient* client, char* ip), const char* ssid, const char* password, const char* mqtt_server, int mqtt_port, const char* __host_name, bool debug_print) {
 void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
   options = newOptions;
   if(options->debug_print == NULL) {
     options->debug_print = true;
   }
+
+  if(options->telemetryInterval) {
+    telemetryInterval = options->telemetryInterval;
+  } else {
+    telemetryInterval = DEFAULT_TELEMETRY_INTERVAL;
+  }
+  nextTelemetry = telemetryInterval;
 
   if(options->debug_print) Serial.println();
   if(options->debug_print) Serial.print("Connecting to ");
@@ -142,8 +186,8 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
     sprintf(mac + strlen(mac),"%02X:",macBin[i]);
   }
   mac[strlen(mac)-1] = '\0';
-  Serial.print("MAC: ");
-  Serial.println(mac);
+  if(options->debug_print) Serial.print("MAC: ");
+  if(options->debug_print) Serial.println(mac);
 
   randomSeed(micros());
   client.setServer(options->mqtt_server, options->mqtt_port);
@@ -187,6 +231,7 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
 void loop_mqtt() {
   //Check if mqtt client is connected, if not try to reconnect to it(and wifi)
   //Fail in a non-blocking way
+  //TODO: count failures, do something like reboot or host network?
   if (!client.connected()) {
     uint32_t now = millis();
     if (now - lastReconnectAttempt > 5000) {
@@ -196,10 +241,16 @@ void loop_mqtt() {
         lastReconnectAttempt = 0;
       }
     }
-  }else{
+  } else {
     // mqtt client connected
     client.loop();//Look for messages and whatnot...
     options->connectedLoop(&client);
+    if(options->telemetry) {
+      if( (long)( millis() - nextTelemetry ) >= 0) {
+        nextTelemetry = millis() + telemetryInterval;
+        options->telemetry(&client);
+      }
+    }
   }//end mqtt client connected
 
   ArduinoOTA.handle();
