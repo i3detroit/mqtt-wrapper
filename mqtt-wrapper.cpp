@@ -8,9 +8,11 @@
 #include "mqtt-wrapper.h"
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
 #include <ArduinoOTA.h>
 
 
+ESP8266WiFiMulti wifiMulti;
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -37,7 +39,7 @@ void info2() {
 
 
 boolean reconnect() {
-  if(WiFi.status() != WL_CONNECTED) {
+  if(wifiMulti.run() != WL_CONNECTED) {
     if(state != WIFI_DISCONNECTED) {
       state = WIFI_DISCONNECTED;
       if(options->connectionEvent) {
@@ -179,7 +181,8 @@ void setup_mqtt(struct mqtt_wrapper_options* newOptions) {
   WiFi.mode(WIFI_STA);
 
   WiFi.hostname(options->host_name);
-  WiFi.begin(options->ssid, options->password);
+  wifiMulti.addAP(options->ssid, options->password);
+  wifiMulti.run();
 
   WiFi.macAddress(macBin);
   for (int i = 0; i < sizeof(macBin); ++i){
